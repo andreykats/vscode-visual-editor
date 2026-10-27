@@ -83,7 +83,9 @@ jobs:
         run: gh release download "$GITHUB_REF_NAME" --pattern '*.vsix'
       - name: Publish to the Marketplace
         # --skip-duplicate lets a partly failed release be re-run.
-        run: npx vsce publish --oidc --skip-duplicate --packagePath vibe-visual-editor.vsix
+        # vsce 4.0.0's --oidc token exchange omits api-version and gets a 400; the fix
+        # (microsoft/vscode-vsce c960f2e) is only in prereleases. Drop the pin once 4.0.1 is released.
+        run: npx --yes @vscode/vsce@4.0.1-5 publish --oidc --skip-duplicate --packagePath vibe-visual-editor.vsix
 
   open-vsx:
     needs: [check, extension]
