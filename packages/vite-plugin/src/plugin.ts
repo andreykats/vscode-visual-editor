@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
@@ -16,12 +17,13 @@ import {
   type HealthResponse,
   type SourceAdapter,
 } from '@vibe-visual-editor/protocol';
-import { ParseError } from './indexer';
-import { cleanId } from './paths';
+import { ParseError, type CreationSiteLoc } from './indexer';
+import { cleanId, isScript } from './paths';
 import { SourceIndex } from './sourceIndex';
 
 export interface VibeVisualEditorOptions {
-  adapters: SourceAdapter[];
+  /** How the app's scripts build the DOM. Text in HTML pages is editable without one. */
+  adapters?: SourceAdapter[];
   /**
    * Extra parent-frame origins the page client will handshake with, besides
    * VS Code webviews. Only needed for test harnesses.
@@ -50,6 +52,24 @@ export function __leFile(token, file, rel) {
   files.set(token, { file, rel });
 }
 `;
+
+/** A JS string literal that is also safe inside an inline `<script>`. */
+const jsString = (s: string) => JSON.stringify(s).replace(/</g, '\\u003c');
+
+/** The ` data-vve-loc="…"` attribute that carries a creation site into the DOM. */
+const locAttribute = (token: string, site: CreationSiteLoc) => ` ${LOC_ATTRIBUTE}="${token}:${site.start}:${site.end}:${site.line}:${site.column}"`;
+
+/** Registers the file behind a module token, for the client to read `data-vve-loc` attributes. */
+const registerFile = (token: string, file: string, rel: string) => `__leFile(${jsString(token)}, ${jsString(file)}, ${jsString(rel)});`;
+
+/** Whether `html` is the file's content on disk, so offsets into it are offsets into the file. */
+async function isOnDisk(file: string, html: string): Promise<boolean> {
+  try {
+    return (await readFile(file, 'utf8')) === html;
+  } catch {
+    return false;
+  }
+}
 
 function readClientBundle(): string {
   const here = path.dirname(fileURLToPath(import.meta.url));
@@ -99,8 +119,7 @@ function loopbackHost(configured: string | boolean | undefined): string {
   return 'localhost';
 }
 
-export function vibeVisualEditor(options: VibeVisualEditorOptions): Plugin {
-  if (!options?.adapters?.length) throw new Error('Vibe Visual Editor: at least one adapter is required');
+export function vibeVisualEditor(options: VibeVisualEditorOptions = {}): Plugin {
   let index: SourceIndex | undefined;
   let server: ViteDevServer | undefined;
   /** Short per-module token for \`data-vve-loc\`, so attributes don't repeat file paths. */
@@ -143,7 +162,7 @@ export function vibeVisualEditor(options: VibeVisualEditorOptions): Plugin {
     enforce: 'pre',
 
     configResolved(config) {
-      index = new SourceIndex(config.root, options.adapters);
+      index = new SourceIndex(config.root, options.adapters ?? []);
     },
 
     resolveId: {
@@ -172,7 +191,8 @@ export function vibeVisualEditor(options: VibeVisualEditorOptions): Plugin {
       filter: { id: { include: /\.[cm]?[jt]sx?$/, exclude: [/[\\/]node_modules[\\/]/, /^\0/] } },
       handler(code, id) {
         const file = cleanId(id);
-        if (!path.isAbsolute(file) || !index) return null;
+        // A page's inline scripts arrive as `page.html?html-proxy&index=0.js`; the page itself is indexed in transformIndexHtml.
+        if (!path.isAbsolute(file) || !isScript(file) || !index) return null;
         const reindex = index.has(file);
         let analysis;
         try {
@@ -191,7 +211,7 @@ export function vibeVisualEditor(options: VibeVisualEditorOptions): Plugin {
         let attributed = false;
         for (const site of analysis.creationSites) {
           if (site.attributeAt !== undefined) {
-            s.appendLeft(site.attributeAt, ` ${LOC_ATTRIBUTE}="${token}:${site.start}:${site.end}:${site.line}:${site.column}"`);
+            s.appendLeft(site.attributeAt, locAttribute(token, site));
             attributed = true;
           } else {
             s.prependRight(site.start, '__le(');
@@ -201,7 +221,7 @@ export function vibeVisualEditor(options: VibeVisualEditorOptions): Plugin {
         }
         const names = [wrapped && '__le', attributed && '__leFile'].filter(Boolean).join(', ');
         let header = `import { ${names} } from '${RUNTIME_ID}';`;
-        if (attributed) header += ` __leFile(${JSON.stringify(token)}, ${JSON.stringify(file)}, ${JSON.stringify(analysis.record.rel)});`;
+        if (attributed) header += ` ${registerFile(token, file, analysis.record.rel)}`;
         if (analysis.headerAt === 0) s.prepend(`${header}\n`);
         else s.appendLeft(analysis.headerAt, `\n${header}`);
         return { code: s.toString(), map: s.generateMap({ hires: 'boundary', source: file, includeContent: true }) };
@@ -209,9 +229,24 @@ export function vibeVisualEditor(options: VibeVisualEditorOptions): Plugin {
     },
 
     transformIndexHtml: {
+      // Before Vite's own processing, so the injected imports go through the plugin pipeline and the page is still its source.
       order: 'pre',
-      handler() {
-        return [{ tag: 'script', attrs: { type: 'module' }, children: `import '${CLIENT_ID}';`, injectTo: 'head-prepend' }];
+      async handler(html, { filename: file }) {
+        let script = `import '${CLIENT_ID}';`;
+        // Only HTML that is the file as written can be mapped back to it, not a template another plugin already rewrote.
+        if (index && path.isAbsolute(file) && (await isOnDisk(file, html))) {
+          const reindex = index.has(file);
+          const analysis = index.updateHtml(file, html);
+          if (reindex) server?.ws.send({ type: 'custom', event: INDEX_CHANGED_EVENT, data: { file } });
+          if (analysis.creationSites.length > 0) {
+            const s = new MagicString(html);
+            const token = tokenFor(file);
+            for (const site of analysis.creationSites) s.appendLeft(site.attributeAt!, locAttribute(token, site));
+            html = s.toString();
+            script += `\nimport { __leFile } from '${RUNTIME_ID}'; ${registerFile(token, file, analysis.record.rel)}`;
+          }
+        }
+        return { html, tags: [{ tag: 'script', attrs: { type: 'module' }, children: script, injectTo: 'head-prepend' }] };
       },
     },
 

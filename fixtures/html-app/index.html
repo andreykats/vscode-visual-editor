@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>html-app fixture</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1>
+      Plain HTML
+    </h1>
+    <p class="lead">No framework, just a page.</p>
+    <p data-testid="entity">Tom &amp; Jerry</p>
+    <p data-testid="mixed">Read the <a href="./about.html">about page</a> next.</p>
+    <ul>
+      <li>Home</li>
+      <li>Home</li>
+    </ul>
+    <label>Size
+      <select data-testid="size">
+        <option>
+          Small
+        </option>
+        <option>Large</option>
+      </select>
+    </label>
+    <p data-testid="runtime"></p>
+    <template id="card"><p class="card">From a template</p></template>
+    <div id="cards"></div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

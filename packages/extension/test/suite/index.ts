@@ -199,6 +199,37 @@ test('JSX text and attributes are written back in JSX syntax', async () => {
   }
 });
 
+test('HTML page text is written back as HTML, and found again after the page moved', async () => {
+  const rel = 'page.html';
+  const source = '<!doctype html>\n<html>\n<body>\n  <p>\n    Tom &amp; Jerry\n  </p>\n</body>\n</html>\n';
+  writeFileSync(file(rel), source);
+  try {
+    // Serving the page indexes it; the client would send the <p>'s data-vve-loc with the text.
+    const served = await (await fetch(new URL(rel, DEV_URL))).text();
+    const [start, end, line, column] = /<p data-vve-loc="[0-9a-z]+:(\d+):(\d+):(\d+):(\d+)"/.exec(served)!.slice(1).map(Number);
+    const res = await fetch(`${DEV_ORIGIN}/__vibe-visual-editor/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: '\n    Tom & Jerry\n  ', elementLoc: { file: file(rel), rel, start, end, line, column } }),
+    });
+    const [c] = ((await res.json()) as ResolveResponse).candidates;
+    assert.equal(c?.raw, '\n    Tom &amp; Jerry\n  ');
+
+    // An unsaved line above the text: the edit has to locate it again through the dev server.
+    const d = await doc(rel);
+    const insert = new vscode.WorkspaceEdit();
+    insert.insert(d.uri, new vscode.Position(0, 0), '<!-- draft -->\n');
+    assert.ok(await vscode.workspace.applyEdit(insert));
+    await panel.edits.edit(c!, '\n    Tom & Jerry <3\n  ');
+    assert.equal(d.getText(), `<!-- draft -->\n${source.replace('Tom &amp; Jerry', 'Tom & Jerry &lt;3')}`);
+    await panel.discard();
+    assert.equal(d.getText(), `<!-- draft -->\n${source}`);
+  } finally {
+    await revert(rel);
+    rmSync(file(rel), { force: true });
+  }
+});
+
 test('discard restores exactly; undo and redo step through edits', async () => {
   const rel = 'src/views/settings.ts';
   const original = disk(rel);

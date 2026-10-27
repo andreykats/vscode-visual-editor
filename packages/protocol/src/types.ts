@@ -1,8 +1,9 @@
 /**
  * How a literal is written: a JS string with that quote, `'jsx'` for JSX text
- * (`<p>Hello</p>`), or `'jsx-attr'` for a JSX attribute string (`title="Hi"`).
+ * (`<p>Hello</p>`), `'jsx-attr'` for a JSX attribute string (`title="Hi"`), or
+ * `'html'` for text in an HTML page.
  */
-export type Quote = "'" | '"' | '`' | 'jsx' | 'jsx-attr';
+export type Quote = "'" | '"' | '`' | 'jsx' | 'jsx-attr' | 'html';
 export type Mode = 'browse' | 'edit' | 'select';
 
 export interface Span {
@@ -22,7 +23,7 @@ export interface SourceLoc extends Span {
   column: number;
 }
 
-/** One string literal, substitution-free template literal, or JSX text in a module. */
+/** One string literal, substitution-free template literal, JSX text, or HTML text in a source file. */
 export interface LiteralEntry extends SourceLoc {
   /** `${file}:${start}`; stable until the module is re-indexed. */
   id: string;

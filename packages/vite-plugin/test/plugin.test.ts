@@ -6,6 +6,18 @@ import { PROTOCOL_VERSION } from '@vibe-visual-editor/protocol';
 import { build, createServer, type ViteDevServer } from 'vite';
 
 const fixture = fileURLToPath(new URL('../../../fixtures/h-app', import.meta.url));
+const htmlFixture = fileURLToPath(new URL('../../../fixtures/html-app', import.meta.url));
+
+const MARKERS = /virtual:vibe-visual-editor|\/__vibe-visual-editor\/|data-vve-loc|__leFile|__le\(/;
+
+function filesIn(dir: string): string[] {
+  const files: string[] = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.isDirectory()) files.push(...filesIn(path.join(dir, e.name)));
+    else files.push(path.join(dir, e.name));
+  }
+  return files;
+}
 
 describe('plugin against fixtures/h-app', () => {
   let server: ViteDevServer;
@@ -80,21 +92,74 @@ describe('plugin against fixtures/h-app', () => {
   });
 });
 
+describe('plugin against fixtures/html-app', () => {
+  let server: ViteDevServer;
+  let base: string;
+  const page = path.join(htmlFixture, 'index.html');
+
+  beforeAll(async () => {
+    server = await createServer({ root: htmlFixture, configFile: path.join(htmlFixture, 'vite.config.ts'), server: { port: 0 }, logLevel: 'silent' });
+    await server.listen();
+    base = `http://localhost:${(server.httpServer!.address() as { port: number }).port}`;
+  });
+  afterAll(async () => {
+    await server?.close();
+  });
+
+  const resolve = async (text: string, elementLoc?: unknown) => {
+    const res = await fetch(`${base}/__vibe-visual-editor/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, elementLoc }) });
+    return res.json();
+  };
+  /** The creation site in a served element's `data-vve-loc`, as the page client reads it. */
+  const locIn = (html: string, before: string) => {
+    const match = new RegExp(`data-vve-loc="[0-9a-z]+:(\\d+):(\\d+):(\\d+):(\\d+)"[^>]*>${before}`).exec(html)!;
+    const [start, end, line, column] = match.slice(1).map(Number);
+    return { file: page, rel: 'index.html', start, end, line, column };
+  };
+
+  it('runs with no adapters', async () => {
+    expect(await (await fetch(`${base}/__vibe-visual-editor/health`)).json()).toMatchObject({ adapters: [] });
+  });
+
+  it('tags the elements of a served page and registers its file with the client', async () => {
+    const html = await (await fetch(`${base}/html-app/`)).text();
+    expect(html).toMatch(/<h1 data-vve-loc="0:\d+:\d+:9:5">\n      Plain HTML/);
+    expect(html).toMatch(/<li data-vve-loc="0:\d+:\d+:16:7">Home<\/li>/);
+    expect(html).toContain('<title>html-app fixture</title>');
+    const proxy = await (await fetch(`${base}/html-app/index.html?html-proxy&index=0.js`)).text();
+    expect(proxy).toContain('virtual:vibe-visual-editor/client');
+    expect(proxy).toContain(`__leFile("0", ${JSON.stringify(page)}, "index.html")`);
+  });
+
+  it("resolves a page's text through the element it is written in", async () => {
+    const html = await (await fetch(`${base}/html-app/`)).text();
+    // Fetching the page's inline-script proxy must not replace the page's index.
+    await fetch(`${base}/html-app/index.html?html-proxy&index=0.js`);
+    const heading = await resolve('\n      Plain HTML\n    ', locIn(html, '\\n      Plain'));
+    expect(heading.candidates).toEqual([expect.objectContaining({ rel: 'index.html', quote: 'html', raw: '\n      Plain HTML\n    ', line: 9 })]);
+    const entity = await resolve('Tom & Jerry', locIn(html, 'Tom'));
+    expect(entity.candidates).toEqual([expect.objectContaining({ raw: 'Tom &amp; Jerry', value: 'Tom & Jerry' })]);
+    expect((await resolve('Tom & Jerry')).editable).toBe(false);
+  });
+
+  it('analyzes an edited page without touching the index', async () => {
+    const res = await fetch(`${base}/__vibe-visual-editor/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: page, code: '<!doctype html><body><p>Draft &lt;1&gt;</p>' }),
+    });
+    expect((await res.json()).literals).toEqual([expect.objectContaining({ value: 'Draft <1>', raw: 'Draft &lt;1&gt;', quote: 'html' })]);
+  });
+});
+
 describe('production build', () => {
-  it('contains no Vibe Visual Editor code', async () => {
-    const outDir = path.join(fixture, 'dist');
-    await build({ root: fixture, configFile: path.join(fixture, 'vite.config.ts'), logLevel: 'silent', build: { outDir, emptyOutDir: true } });
-    const files: string[] = [];
-    const walk = (dir: string) => {
-      for (const e of readdirSync(dir, { withFileTypes: true })) e.isDirectory() ? walk(path.join(dir, e.name)) : files.push(path.join(dir, e.name));
-    };
-    walk(outDir);
+  it.each([fixture, htmlFixture])('contains no Vibe Visual Editor code: %s', async (root) => {
+    const outDir = path.join(root, 'dist');
+    await build({ root, configFile: path.join(root, 'vite.config.ts'), logLevel: 'silent', build: { outDir, emptyOutDir: true } });
+    const files = filesIn(outDir);
     expect(files.length).toBeGreaterThan(1);
-    for (const f of files) {
-      const text = readFileSync(f, 'utf8');
-      // The plugin's markers, not its bare name, which can also be part of the checkout's path.
-      expect(text, f).not.toMatch(/virtual:vibe-visual-editor|\/__vibe-visual-editor\/|data-vve-loc|__leFile|__le\(/);
-    }
+    // The plugin's markers, not its bare name, which can also be part of the checkout's path.
+    for (const f of files) expect(readFileSync(f, 'utf8'), f).not.toMatch(MARKERS);
     expect(existsSync(path.join(outDir, 'index.html'))).toBe(true);
   });
 });

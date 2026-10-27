@@ -1,5 +1,4 @@
 import { escapeLiteral } from './escape';
-import type { Quote } from './types';
 
 /**
  * JSX text (`<p>Hello</p>`) and JSX attribute strings (`<Card title="Hi" />`):
@@ -102,11 +101,4 @@ export function jsxAttributeRaw(value: string, original: string): string {
   const preferred = original.startsWith("'") ? ["'", '"'] : ['"', "'"];
   const quote = preferred.find((q) => !body.includes(q));
   return quote ? quote + body + quote : asExpression(value);
-}
-
-/** Source for a literal of kind `quote` that renders as `value`. `original` is the literal's source as it was indexed. */
-export function literalRaw(value: string, quote: Quote, original: string): string {
-  if (quote === 'jsx') return jsxTextRaw(value, original);
-  if (quote === 'jsx-attr') return jsxAttributeRaw(value, original);
-  return escapeLiteral(value, quote);
 }

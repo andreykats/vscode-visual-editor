@@ -2,7 +2,7 @@
 
 Vibe Visual Editor shows your running Vite app in a VS Code tab. In the preview you can retype text and save the change to the source file, or select an element so Claude Code or Codex can work on it.
 
-It works with React (JSX) apps and with apps that build their DOM with an `h()` helper. It has three parts:
+It works with React (JSX) apps, with apps that build their DOM with an `h()` helper, and with plain HTML pages. It has three parts:
 
 - **The VS Code extension** (`andreykats.vibe-visual-editor`), which provides the preview tab, saving, and the agent bridge.
 - **The Vite plugin** (`@vibe-visual-editor/vite-plugin`), which runs only in your app's dev server. It maps rendered text back to source.
@@ -51,6 +51,18 @@ export default defineConfig({
 });
 ```
 
+**Plain HTML pages:** no adapter is needed. Text in every `.html` page the dev server serves can be edited, in apps with adapters too.
+
+```ts
+import vibeVisualEditor from '@vibe-visual-editor/vite-plugin';
+
+export default defineConfig({
+  plugins: [vibeVisualEditor()],
+});
+```
+
+A folder of HTML files without a build setup only needs `npm install -D vite @vibe-visual-editor/vite-plugin` and this `vite.config.ts` next to the pages. Vite serves `index.html` at `/` and every other page at its own path, for example `/about.html`. Pages in `public/` are copied as they are, so they can't be edited.
+
 Add `.vibe-visual-editor/` to the app's `.gitignore`. While the dev server runs, the plugin writes `.vibe-visual-editor/server.json` there so the extension can find the server.
 
 The plugin is active only in `vite` dev (`apply: 'serve'`), and production builds contain none of its code. It also does nothing when the page isn't inside the Vibe Visual Editor preview, so a normal browser tab on the same dev server is unaffected.
@@ -94,10 +106,11 @@ Only text that comes straight from your source can be edited:
 
 - string literals (`'…'`, `"…"`, and template literals without `${}`), including dropdown option text
 - in React: text between tags (`<h1>Welcome</h1>`) and string props that a component renders as text (`<Card title="Settings" />`)
+- in HTML pages: text between tags in `<body>`, including text in a `<template>` that a script clones into the page
 
-Edits are written back in the same syntax. In JSX, characters like `{` or `<` become entities (`&#123;`, `&lt;`), and text that JSX can't hold, such as a line break, becomes `{'…'}`. Tags, attributes of HTML elements, classes, styles and structure can't be edited, and neither can text built at runtime. For those, select the element and ask the agent.
+Edits are written back in the same syntax. In JSX, characters like `{` or `<` become entities (`&#123;`, `&lt;`), and text that JSX can't hold, such as a line break, becomes `{'…'}`. In HTML, `<` becomes `&lt;`, `&` becomes `&amp;` where it could be read as the start of an entity, and a non-breaking space becomes `&nbsp;`. The line breaks and indentation around multi-line HTML text stay as they are, and the editor shows only the text between them. Tags, attributes of HTML elements, classes, styles and structure can't be edited, and neither can text built at runtime. For those, select the element and ask the agent.
 
-A few JSX texts are skipped because JSX compilers render them differently, so there's no single right answer: tabs inside the text, and character references that encode whitespace or aren't common named entities.
+A few JSX texts are skipped because JSX compilers render them differently, so there's no single right answer: tabs inside the text, and character references that encode whitespace or aren't common named entities. In HTML pages, text that the browser's parser changes on its way into the page is skipped, for example text it moves out of a `<table>`. So is text in `<title>`, `<textarea>`, scripts and styles, text a script rewrites, and pages that another Vite plugin rewrites before Vibe Visual Editor sees them.
 
 When the same text appears in several equally likely places, Vibe Visual Editor asks which one you meant. If the literal is a shared constant, the editor warns "Used in N places" because changing it changes every use.
 

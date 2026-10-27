@@ -15,7 +15,7 @@ export function formatIssues(error: { issues: readonly { path: readonly Property
 }
 
 export const ModeSchema = z.enum(['browse', 'edit', 'select']);
-export const QuoteSchema = z.enum(["'", '"', '`', 'jsx', 'jsx-attr']);
+export const QuoteSchema = z.enum(["'", '"', '`', 'jsx', 'jsx-attr', 'html']);
 
 
 export const SourceLocSchema = z.object({

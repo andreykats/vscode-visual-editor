@@ -14,7 +14,8 @@ export interface ImportBinding {
 export interface ModuleRecord {
   file: string;
   rel: string;
-  adapter: SourceAdapter;
+  /** Ranks candidates for text shown by an element created in this module. */
+  rank: SourceAdapter['rank'];
   literals: LiteralEntry[];
   /** Identifier name -> number of references in this module. */
   refs: Map<string, number>;
@@ -226,7 +227,7 @@ export function analyzeModule(file: string, code: string, root: string, adapter:
   }
 
   return {
-    record: { file, rel, adapter, literals, refs, exportsByLocal, imports },
+    record: { file, rel, rank: adapter.rank, literals, refs, exportsByLocal, imports },
     creationSites: facts.creationSites.map((site) => ({
       ...loc(site),
       ...(site.attributeAt !== undefined ? { attributeAt: site.attributeAt } : {}),

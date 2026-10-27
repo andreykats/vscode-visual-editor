@@ -9,7 +9,8 @@
     "packages/mcp-bridge",
     "packages/extension",
     "fixtures/h-app",
-    "fixtures/react-app"
+    "fixtures/react-app",
+    "fixtures/html-app"
   ],
   "scripts": {
     "build": "npm run build -w @vibe-visual-editor/vite-plugin -w vibe-visual-editor",

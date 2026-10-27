@@ -2,6 +2,8 @@ export * from './version';
 export * from './types';
 export * from './escape';
 export * from './jsx';
+export * from './html';
+export * from './literal';
 export * from './urls';
 export * from './markdown';
 export * from './messages';

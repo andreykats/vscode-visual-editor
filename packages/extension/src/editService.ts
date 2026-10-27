@@ -216,9 +216,9 @@ export class EditService implements vscode.Disposable {
   }
 }
 
-/** Whether `raw` is shaped like a literal of kind `quote`: quoted strings, or non-empty JSX text. */
+/** Whether `raw` is shaped like a literal of kind `quote`: quoted strings, or non-empty JSX or HTML text. */
 function looksLike(raw: string, quote: Quote): boolean {
-  if (quote === 'jsx') return raw.length > 0;
+  if (quote === 'jsx' || quote === 'html') return raw.length > 0;
   const quotes = quote === 'jsx-attr' ? ['"', "'"] : [quote];
   return raw.length >= 2 && quotes.includes(raw[0]!) && raw[raw.length - 1] === raw[0];
 }

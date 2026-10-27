@@ -45,8 +45,10 @@
     "access": "public"
   },
   "dependencies": {
+    "entities": "^8.1.0",
     "magic-string": "^1.4.3",
-    "oxc-parser": "^0.154.0"
+    "oxc-parser": "^0.154.0",
+    "parse5": "^8.0.1"
   },
   "peerDependencies": {
     "vite": ">=7"

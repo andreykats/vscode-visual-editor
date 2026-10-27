@@ -11,9 +11,33 @@ export interface TextEditor {
   key?(e: KeyboardEvent): void;
 }
 
+/** Whitespace around a text's editable part that an edit keeps as it is. */
+export interface Layout {
+  lead: string;
+  trail: string;
+}
+
+export const NO_LAYOUT: Layout = { lead: '', trail: '' };
+
+/**
+ * The layout of HTML text: leading and trailing whitespace that holds a line
+ * break is how the source is indented (`<p>\n    Hello\n  </p>`), not text to edit.
+ */
+export function sourceLayout(data: string): Layout {
+  if (data.trim() === '') return NO_LAYOUT;
+  const lead = /^\s*/.exec(data)![0];
+  const trail = /\s*$/.exec(data)![0];
+  return { lead: /\n/.test(lead) ? lead : '', trail: /\n/.test(trail) ? trail : '' };
+}
+
+/** `data` without its layout. */
+export const editablePart = (data: string, { lead, trail }: Layout) => data.slice(lead.length, data.length - trail.length);
+
 export interface InlineEditorOptions {
   /** Shown above the editor, e.g. "Used in 3 places". */
   warning?: string;
+  /** Kept out of the editor and put back around the edited text. */
+  layout?: Layout;
   onCommit(value: string): void;
   onCancel(): void;
 }
@@ -35,6 +59,7 @@ const toLf = (s: string) => s.replace(/\r\n?/g, '\n');
 export class InlineEditor implements TextEditor {
   readonly span: HTMLSpanElement;
   private readonly original: string;
+  private readonly layout: Layout;
   private placeholder: HTMLBRElement | null = null;
   private done = false;
 
@@ -43,13 +68,14 @@ export class InlineEditor implements TextEditor {
     private readonly options: InlineEditorOptions,
   ) {
     this.original = text.data;
+    this.layout = options.layout ?? NO_LAYOUT;
     const span = (this.span = document.createElement('span'));
     span.setAttribute('contenteditable', 'plaintext-only');
     span.setAttribute('spellcheck', 'false');
     span.style.cssText =
       'outline:2px solid #3b82f6;outline-offset:2px;border-radius:2px;cursor:text;white-space:pre-wrap;min-width:1ch;display:inline-block;';
     if (options.warning) span.title = options.warning;
-    span.textContent = text.data;
+    span.textContent = editablePart(text.data, this.layout);
     text.before(span);
     text.data = '';
 
@@ -86,7 +112,7 @@ export class InlineEditor implements TextEditor {
     if (this.done) return;
     this.done = true;
     this.span.removeEventListener('blur', this.onBlur);
-    const value = toLf(this.span.textContent ?? '');
+    const value = this.layout.lead + toLf(this.span.textContent ?? '') + this.layout.trail;
     this.text.data = commit ? value : this.original;
     this.span.remove();
     if (commit && value !== this.original) this.options.onCommit(value);

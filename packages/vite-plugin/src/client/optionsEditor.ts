@@ -1,4 +1,4 @@
-import { flatten, type TextEditor } from './editor';
+import { flatten, NO_LAYOUT, type Layout, type TextEditor } from './editor';
 
 interface Row {
   /** What the option shows. */
@@ -9,6 +9,8 @@ interface Row {
 
 export interface EditableRow extends Row {
   node: Text;
+  /** Kept around the edited text; the label is the text without it. */
+  layout?: Layout;
   /** Shown beside the row, e.g. "Used in 3 places". */
   warning?: string;
 }
@@ -141,8 +143,9 @@ export class OptionsEditor implements TextEditor {
   /** Writes the field's value to its option and reports it, once per change. */
   private commitField(field: HTMLInputElement): void {
     const row = this.fields.get(field)!;
-    const value = flatten(field.value);
     const previous = row.node.data;
+    const layout = row.layout ?? NO_LAYOUT;
+    const value = layout.lead + flatten(field.value) + layout.trail;
     if (value === previous) return;
     row.node.data = value;
     this.options.onCommit(row, value, previous);

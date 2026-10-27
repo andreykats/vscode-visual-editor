@@ -7,7 +7,7 @@ import { dts } from 'rolldown-plugin-dts';
 const pkg = fileURLToPath(new URL('..', import.meta.url));
 rmSync(`${pkg}/dist`, { recursive: true, force: true });
 
-const external = ['vite', 'oxc-parser', 'magic-string'];
+const external = ['vite', 'oxc-parser', 'magic-string', 'parse5', 'entities'];
 
 await Promise.all([
   // Node side: the Vite plugin. Runtime deps stay external; the protocol package is inlined.

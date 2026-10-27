@@ -1,0 +1,10 @@
+{
+  "name": "html-app",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "vite build" },
+  "devDependencies": {
+    "@vibe-visual-editor/vite-plugin": "*",
+    "vite": "^8.3.4"
+  }
+}

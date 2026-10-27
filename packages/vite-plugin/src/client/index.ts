@@ -2,7 +2,7 @@ import type { Candidate, ElementDescriptor, HostMessage, Mode } from '@vibe-visu
 import { Channel } from './channel';
 import { describeElement } from './descriptor';
 import { optionText, selectAt, showsLineBreaks, textBounds, textNodeAt } from './dom';
-import { InlineEditor, type TextEditor } from './editor';
+import { editablePart, InlineEditor, sourceLayout, type Layout, type TextEditor } from './editor';
 import { OptionsEditor, type OptionRow } from './optionsEditor';
 import { Overlay } from './overlay';
 import { PendingEdits } from './pending';
@@ -24,6 +24,12 @@ interface InFlight {
 
 /** What an edit of a text node would change, or why it can't be edited. */
 type EditTarget = { candidates: Candidate[]; uses: number } | { reason: string; error: boolean };
+
+const lineBreaks = (s: string) => s.split('\n').length - 1;
+
+/** HTML text keeps its source indentation out of the editor. */
+const layoutOf = (node: Text, candidates: Candidate[]): Layout | undefined =>
+  candidates.every((c) => c.quote === 'html') ? sourceLayout(node.data) : undefined;
 
 class VibeVisualEditorClient {
   private readonly channel = new Channel();
@@ -174,11 +180,12 @@ class VibeVisualEditorClient {
     const { candidates, uses } = target;
     this.editor = new InlineEditor(node, {
       warning: uses > 1 ? `Used in ${uses} places` : undefined,
+      layout: layoutOf(node, candidates),
       onCommit: (value) => {
         this.editor = null;
         this.submitEdit(node, previous, candidates, value);
         const parent = node.parentElement;
-        if (value.includes('\n') && parent && !showsLineBreaks(parent)) this.overlay.toast(LINE_BREAK_HINT, 'info');
+        if (lineBreaks(value) > lineBreaks(previous) && parent && !showsLineBreaks(parent)) this.overlay.toast(LINE_BREAK_HINT, 'info');
       },
       onCancel: () => {
         this.editor = null;
@@ -199,7 +206,9 @@ class VibeVisualEditorClient {
         const target = await this.editTarget(node);
         targets.set(node, target);
         if ('reason' in target) return { label: node.data, current, readonly: target.reason };
-        return { label: node.data, current, node, warning: target.uses > 1 ? `Used in ${target.uses} places` : undefined };
+        const layout = layoutOf(node, target.candidates);
+        const label = layout ? editablePart(node.data, layout) : node.data;
+        return { label, current, node, layout, warning: target.uses > 1 ? `Used in ${target.uses} places` : undefined };
       }),
     );
     if (this.editor?.active || !select.isConnected || this.mode !== 'edit') return;

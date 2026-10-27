@@ -18,5 +18,5 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["packages/*/src", "packages/*/test", "packages/*/scripts", "fixtures/h-app/src", "fixtures/h-app/vite.config.ts", "fixtures/react-app/src", "fixtures/react-app/vite.config.ts", "tests", "vitest.config.ts", "playwright.config.ts"]
+  "include": ["packages/*/src", "packages/*/test", "packages/*/scripts", "fixtures/h-app/src", "fixtures/h-app/vite.config.ts", "fixtures/react-app/src", "fixtures/react-app/vite.config.ts", "fixtures/html-app/vite.config.ts", "tests", "vitest.config.ts", "playwright.config.ts"]
 }

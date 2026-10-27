@@ -5,7 +5,7 @@ A VS Code extension plus a Vite dev plugin. It renders your running web app in a
 - click text, retype it, and save the change back to the source string literal;
 - select any element and have Claude Code or Codex act on it through MCP.
 
-> **Preview release.** Works with React (JSX) apps, and with apps that build their DOM with an `h(tag, attrs, ...children)` helper.
+> **Preview release.** Works with React (JSX) apps, apps that build their DOM with an `h(tag, attrs, ...children)` helper, and plain HTML pages.
 
 ## Install
 
@@ -24,13 +24,14 @@ packages/
   mcp-bridge/    stdio MCP server (bundled into the extension as dist/mcp-bridge.mjs)
 fixtures/h-app/      minimal Vite app built with an h() helper
 fixtures/react-app/  minimal Vite + React app
+fixtures/html-app/   plain HTML pages, no framework or adapter
 tests/           Playwright page-client tests, plus a harness that stands in for the webview
 docs/            setup, adapter guide, spike results
 ```
 
 ## How it fits together
 
-- **Vite plugin** (dev only). Indexes every string literal as modules are transformed, and tags where each element was created: `h(...)` calls are wrapped as `__le(h(...), loc)`, and lowercase JSX elements get a `data-vve-loc` attribute. Serves `/__vibe-visual-editor/resolve`, `/analyze` and `/health`. Injects the page client and writes `.vibe-visual-editor/server.json`.
+- **Vite plugin** (dev only). Indexes every string literal as modules are transformed, and the text of each HTML page as it is served, and tags where each element was created: `h(...)` calls are wrapped as `__le(h(...), loc)`, while lowercase JSX elements and the elements of HTML pages get a `data-vve-loc` attribute. Serves `/__vibe-visual-editor/resolve`, `/analyze` and `/health`. Injects the page client and writes `.vibe-visual-editor/server.json`.
 - **Page client** (inside the iframe). Does all the DOM work: hover outlines, the inline plain-text editor, selection and element descriptors, keyboard forwarding, and re-applying unsaved edits after the app re-renders. Talks to the webview with `postMessage`, pinned to the webview's origin after a handshake.
 - **Extension.** Owns all file writes. Edits are `WorkspaceEdit`s on `TextDocument`s, so files get the dirty marker and normal undo, and nothing reaches disk until Save. Each window runs a loopback bridge (random port plus token) and registers it in `~/.vibe-visual-editor/windows/<pid>.json`.
 - **MCP bridge.** Each agent starts its own stdio process. It routes to the VS Code window whose workspace contains its `cwd`, and exposes `open_preview`, `get_selection` and `get_preview_state`, plus a `preview://selection` resource and a `selected` prompt.

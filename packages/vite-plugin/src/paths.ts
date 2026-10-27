@@ -2,6 +2,15 @@ import path from 'node:path';
 
 const SCRIPT_EXT = /\.(?:[cm]?[jt]sx?)$/;
 
+export function isScript(file: string): boolean {
+  return SCRIPT_EXT.test(file);
+}
+
+/** Pages Vite serves through `transformIndexHtml`. */
+export function isHtml(file: string): boolean {
+  return file.endsWith('.html');
+}
+
 export function stripScriptExt(file: string): string {
   return file.replace(SCRIPT_EXT, '');
 }

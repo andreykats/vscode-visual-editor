@@ -2,7 +2,7 @@
 
 See your running Vite app in a VS Code tab, fix its text by typing right on the page, and point Claude Code or Codex at the exact element you mean.
 
-> **Preview release.** Works with React (JSX) apps, and with apps that build their DOM with an `h(tag, attrs, ...children)` helper.
+> **Preview release.** Works with React (JSX) apps, apps that build their DOM with an `h(tag, attrs, ...children)` helper, and plain HTML pages.
 
 ## What it does
 
@@ -38,7 +38,7 @@ Everything runs on your machine. The preview only opens loopback URLs, and nothi
    });
    ```
 
-   For an `h()` helper, use `hAdapter({ factory: 'h', from: '/src/ui/dom.ts' })` instead, with `from` pointing at the module that exports it.
+   For an `h()` helper, use `hAdapter({ factory: 'h', from: '/src/ui/dom.ts' })` instead, with `from` pointing at the module that exports it. For plain HTML pages, `vibeVisualEditor()` needs no adapter.
 
    Add `.vibe-visual-editor/` to `.gitignore`. The dev server writes a small discovery file there.
 
@@ -55,7 +55,7 @@ Pick a mode in the preview's toolbar:
 - **Edit text:** a solid outline marks text you can edit, and a dashed one marks text built at runtime. Enter commits an edit, Esc cancels it and Shift+Enter adds a line break. Cmd+S / Ctrl+S saves, and Cmd+Z / Ctrl+Z undoes.
 - **Select:** click an element, then ask your agent about "the selected element".
 
-Only text that comes straight from your source can be edited: string literals, and in React, text between tags and text props like `<Card title="…" />`. Tags, attributes, classes and styles can't. For those, select the element and ask the agent.
+Only text that comes straight from your source can be edited: string literals, text in HTML pages, and in React, text between tags and text props like `<Card title="…" />`. Tags, attributes, classes and styles can't. For those, select the element and ask the agent.
 
 ## Commands
 

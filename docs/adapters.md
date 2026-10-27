@@ -7,6 +7,7 @@ An adapter teaches the Vite plugin how one rendering style creates elements. The
 - skipping literals that are syntax rather than values: import sources, object keys, TS literal types, directives, `require()` arguments, and tagged templates
 - counting how many places read a `const` literal, including across imports
 - tagging creation sites, either by wrapping them as `__le(expr, loc)` or with a `data-vve-loc` attribute, and producing source maps
+- indexing the text of HTML pages as Vite serves them, with no adapter involved
 - serving `/__vibe-visual-editor/resolve`
 
 The adapter supplies only facts that depend on the framework. The interface lives in `packages/protocol/src/adapter.ts`:
