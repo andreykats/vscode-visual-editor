@@ -43,7 +43,6 @@ await Promise.all([
     platform: 'browser',
     format: 'esm',
     target: 'es2022',
-    external: ['virtual:vibe-visual-editor/config'],
     minify: true,
     legalComments: 'none',
   }),

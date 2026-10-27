@@ -71,6 +71,11 @@
         "category": "Vibe Visual Editor"
       },
       {
+        "command": "vibeVisualEditor.openFile",
+        "title": "Open in Vibe Visual Editor",
+        "icon": "$(open-preview)"
+      },
+      {
         "command": "vibeVisualEditor.save",
         "title": "Save Edits",
         "category": "Vibe Visual Editor"
@@ -106,6 +111,28 @@
         "category": "Vibe Visual Editor"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "vibeVisualEditor.openFile",
+          "when": "resourceExtname == .html",
+          "group": "navigation@90"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "vibeVisualEditor.openFile",
+          "when": "resourceExtname == .html",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "vibeVisualEditor.openFile",
+          "when": "resourceExtname == .html"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "vibeVisualEditor.save",
@@ -142,6 +169,7 @@
     "@types/vscode": "~1.140.0",
     "@vibe-visual-editor/mcp-bridge": "0.1.0",
     "@vibe-visual-editor/protocol": "0.1.0",
+    "@vibe-visual-editor/server-core": "0.1.0",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",

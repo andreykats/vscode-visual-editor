@@ -128,7 +128,7 @@ describe('plugin against fixtures/html-app', () => {
     expect(html).toContain('<title>html-app fixture</title>');
     const proxy = await (await fetch(`${base}/html-app/index.html?html-proxy&index=0.js`)).text();
     expect(proxy).toContain('virtual:vibe-visual-editor/client');
-    expect(proxy).toContain(`__leFile("0", ${JSON.stringify(page)}, "index.html")`);
+    expect(proxy).toContain(`start({"trustedParentOrigins":[],"files":{"0":{"file":${JSON.stringify(page)},"rel":"index.html"}}});`);
   });
 
   it("resolves a page's text through the element it is written in", async () => {

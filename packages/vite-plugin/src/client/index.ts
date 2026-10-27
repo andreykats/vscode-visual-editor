@@ -1,8 +1,9 @@
-import type { Candidate, ElementDescriptor, HostMessage, Mode } from '@vibe-visual-editor/protocol';
+import type { Candidate, ClientConfig, ElementDescriptor, HostMessage, Mode } from '@vibe-visual-editor/protocol';
 import { Channel } from './channel';
 import { describeElement } from './descriptor';
 import { optionText, selectAt, showsLineBreaks, textBounds, textNodeAt } from './dom';
 import { editablePart, InlineEditor, sourceLayout, type Layout, type TextEditor } from './editor';
+import { registerFiles } from './locs';
 import { OptionsEditor, type OptionRow } from './optionsEditor';
 import { Overlay } from './overlay';
 import { PendingEdits } from './pending';
@@ -32,7 +33,7 @@ const layoutOf = (node: Text, candidates: Candidate[]): Layout | undefined =>
   candidates.every((c) => c.quote === 'html') ? sourceLayout(node.data) : undefined;
 
 class VibeVisualEditorClient {
-  private readonly channel = new Channel();
+  private readonly channel: Channel;
   private readonly resolver = new Resolver();
   private readonly overlay = new Overlay();
   private readonly pending = new PendingEdits(this.resolver, this.overlay.host);
@@ -44,7 +45,8 @@ class VibeVisualEditorClient {
   private readonly inFlight = new Map<number, InFlight>();
   private lastUrl = location.href;
 
-  constructor() {
+  constructor(config: ClientConfig) {
+    this.channel = new Channel(config.trustedParentOrigins);
     // Registered before the app's own listeners so the capture handlers run first.
     for (const type of POINTER_EVENTS) window.addEventListener(type, this.onPointer, { capture: true });
     window.addEventListener('mousemove', this.onMove, { capture: true, passive: true });
@@ -323,4 +325,16 @@ class VibeVisualEditorClient {
   };
 }
 
-if (window.parent !== window) new VibeVisualEditorClient();
+let started = false;
+
+/**
+ * Starts the client. The host that served the page calls it once, from the
+ * inline module it injects. Outside the preview's frame it only records the
+ * page's files.
+ */
+export function start(config: ClientConfig): void {
+  if (config.files) registerFiles(config.files);
+  if (started || window.parent === window) return;
+  started = true;
+  new VibeVisualEditorClient(config);
+}

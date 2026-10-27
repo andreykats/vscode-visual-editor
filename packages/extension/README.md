@@ -15,7 +15,8 @@ Everything runs on your machine. The preview only opens loopback URLs, and nothi
 
 ## Requirements
 
-- A Vite app with the [`@vibe-visual-editor/vite-plugin`](https://www.npmjs.com/package/@vibe-visual-editor/vite-plugin) dev plugin. The plugin maps rendered text back to source, and it isn't included in production builds.
+- For a Vite app: the [`@vibe-visual-editor/vite-plugin`](https://www.npmjs.com/package/@vibe-visual-editor/vite-plugin) dev plugin. The plugin maps rendered text back to source, and it isn't included in production builds.
+- Plain HTML pages need nothing else: the extension serves them itself.
 - VS Code 1.140 or later.
 - For the agent features: Claude Code or Codex.
 
@@ -43,6 +44,8 @@ Everything runs on your machine. The preview only opens loopback URLs, and nothi
    Add `.vibe-visual-editor/` to `.gitignore`. The dev server writes a small discovery file there.
 
 2. Start the dev server (`npm run dev`) and run **Vibe Visual Editor: Open Preview** from the Command Palette.
+
+   For plain HTML pages, skip both steps: right-click an `.html` file and choose **Open in Vibe Visual Editor**.
 3. To use the agent features, run **Vibe Visual Editor: Configure Claude Code and Codex** once, then start a new agent session.
 
 The [setup guide](https://github.com/andreykats/vscode-visual-editor/blob/main/docs/setup.md) covers every option and troubleshooting.

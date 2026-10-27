@@ -6,11 +6,6 @@ export function isScript(file: string): boolean {
   return SCRIPT_EXT.test(file);
 }
 
-/** Pages Vite serves through `transformIndexHtml`. */
-export function isHtml(file: string): boolean {
-  return file.endsWith('.html');
-}
-
 export function stripScriptExt(file: string): string {
   return file.replace(SCRIPT_EXT, '');
 }
@@ -25,10 +20,6 @@ export function resolveImportBase(source: string, importer: string, root: string
   }
   if (source.startsWith('/')) return stripScriptExt(path.join(root, source));
   return null;
-}
-
-export function toRel(root: string, file: string): string {
-  return path.relative(root, file).split(path.sep).join('/');
 }
 
 /** Module id without Vite's query/hash suffix. */

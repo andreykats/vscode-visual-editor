@@ -2,8 +2,7 @@ import { htmlTextRaw, type LiteralEntry } from '@vibe-visual-editor/protocol';
 import MagicString from 'magic-string';
 import { parse, type DefaultTreeAdapterMap } from 'parse5';
 import { describe, expect, it } from 'vitest';
-import { analyzeHtml } from '../src/html';
-import { SourceIndex } from '../src/sourceIndex';
+import { analyzeHtml, HtmlIndex } from '../src/html';
 
 type Node = DefaultTreeAdapterMap['node'];
 
@@ -11,7 +10,7 @@ const root = '/proj';
 const file = `${root}/index.html`;
 const page = (body: string) => `<!doctype html>\n<html>\n<head><title>T</title></head>\n<body>\n${body}\n</body>\n</html>\n`;
 const analyze = (html: string) => analyzeHtml(file, html, root);
-const texts = (html: string) => analyze(html).record.literals.map((l) => l.value);
+const texts = (html: string) => analyze(html).literals.map((l) => l.value);
 
 /** Text of every text node a browser would build from `html`, in document order. */
 function domTexts(html: string): string[] {
@@ -27,7 +26,7 @@ function domTexts(html: string): string[] {
 describe('analyzeHtml', () => {
   it('indexes body text with its exact source span, decoded value, line and column', () => {
     const html = page('  <h1>\n    Welcome\n  </h1>\n  <p>Tom &amp; Jerry &copy; 2026</p>');
-    const lits = analyze(html).record.literals;
+    const lits = analyze(html).literals;
     expect(lits.map((l) => [l.value, l.raw, l.quote, l.line, l.column])).toEqual([
       ['\n    Welcome\n  ', '\n    Welcome\n  ', 'html', 5, 7],
       ['Tom & Jerry © 2026', 'Tom &amp; Jerry &copy; 2026', 'html', 8, 6],
@@ -37,9 +36,9 @@ describe('analyzeHtml', () => {
 
   it('owns each text by the element around it, which is tagged as a creation site', () => {
     const html = page('<p>One <b>two</b> three</p>');
-    const { record, creationSites } = analyze(html);
+    const { literals, creationSites } = analyze(html);
     const [p, b] = creationSites.filter((s) => html.startsWith('<p>', s.start) || html.startsWith('<b>', s.start));
-    expect(record.literals.map((l) => [l.value, l.owner])).toEqual([
+    expect(literals.map((l) => [l.value, l.owner])).toEqual([
       ['One ', p!.start],
       ['two', b!.start],
       [' three', p!.start],
@@ -86,12 +85,20 @@ describe('analyzeHtml', () => {
   });
 
   it('normalizes CRLF line breaks like the parser', () => {
-    const lits = analyze(page('<p>a\r\nb</p>')).record.literals;
+    const lits = analyze(page('<p>a\r\nb</p>')).literals;
     expect(lits.map((l) => [l.value, l.raw])).toEqual([['a\nb', 'a\r\nb']]);
   });
 
+  it('places a host script after <head>, else after <html>, else after the doctype', () => {
+    const at = (html: string) => html.slice(0, analyze(html).injectAt);
+    expect(at('<!doctype html><html lang="en"><head><meta charset="utf-8"></head><body></body></html>')).toBe('<!doctype html><html lang="en"><head>');
+    expect(at('<!doctype html><html><body>x</body></html>')).toBe('<!doctype html><html>');
+    expect(at('<!doctype html>\n<p>x</p>')).toBe('<!doctype html>');
+    expect(at('<p>x</p>')).toBe('');
+  });
+
   it('owns nothing in a body the parser implied, so that text is not editable', () => {
-    expect(analyze('<p>tagged</p>loose').record.literals.map((l) => l.value)).toEqual(['tagged']);
+    expect(analyze('<p>tagged</p>loose').literals.map((l) => l.value)).toEqual(['tagged']);
   });
 });
 
@@ -121,17 +128,17 @@ describe('htmlTextRaw against the HTML parser', () => {
 
   it('round-trips the source of every indexed text', () => {
     const html = page('<p>Tom &amp; Jerry &copy; 2026 &lt;3</p><p>\n  Q&amp;A\n</p>');
-    for (const l of analyze(html).record.literals) {
+    for (const l of analyze(html).literals) {
       const rewritten = html.slice(0, l.start) + htmlTextRaw(l.value) + html.slice(l.end);
       expect(domTexts(rewritten)).toEqual(domTexts(html));
     }
   });
 });
 
-describe('SourceIndex with HTML pages', () => {
+describe('HtmlIndex', () => {
   const html = page('<ul>\n<li>Home</li>\n<li>Home</li>\n</ul>');
-  const index = new SourceIndex(root, []);
-  const { creationSites } = index.updateHtml(file, html);
+  const index = new HtmlIndex(root);
+  const { creationSites } = index.update(file, html);
   const items = creationSites.filter((s) => html.startsWith('<li', s.start));
   const elementLoc = (start: number) => creationSites.find((s) => s.start === start)!;
 
@@ -143,12 +150,13 @@ describe('SourceIndex with HTML pages', () => {
 
   it('never offers HTML text for an element it is not written in', () => {
     expect(index.resolve({ text: 'Home' }).editable).toBe(false);
-    const other = index.updateHtml(`${root}/about.html`, page('<p>Elsewhere</p>'));
+    const other = index.update(`${root}/about.html`, page('<p>Elsewhere</p>'));
     expect(index.resolve({ text: 'Home', elementLoc: other.creationSites.at(-1)! }).editable).toBe(false);
   });
 
-  it('analyzes a detached page by its extension', () => {
-    const lits: LiteralEntry[] = index.analyzeDetached(`${root}/x.html`, page('<p>Draft</p>'));
+  it('analyzes a page without touching the index', () => {
+    const lits: LiteralEntry[] = index.analyze(`${root}/x.html`, page('<p>Draft</p>'));
     expect(lits.map((l) => [l.value, l.quote])).toEqual([['Draft', 'html']]);
+    expect(index.has(`${root}/x.html`)).toBe(false);
   });
 });

@@ -2,7 +2,7 @@
 
 Vibe Visual Editor shows your running Vite app in a VS Code tab. In the preview you can retype text and save the change to the source file, or select an element so Claude Code or Codex can work on it.
 
-It works with React (JSX) apps, with apps that build their DOM with an `h()` helper, and with plain HTML pages. It has three parts:
+It works with React (JSX) apps, with apps that build their DOM with an `h()` helper, and with plain HTML pages. Plain HTML pages need only the extension: skip step 2 and see [Plain HTML pages](#plain-html-pages). It has three parts:
 
 - **The VS Code extension** (`andreykats.vibe-visual-editor`), which provides the preview tab, saving, and the agent bridge.
 - **The Vite plugin** (`@vibe-visual-editor/vite-plugin`), which runs only in your app's dev server. It maps rendered text back to source.
@@ -51,7 +51,7 @@ export default defineConfig({
 });
 ```
 
-**Plain HTML pages:** no adapter is needed. Text in every `.html` page the dev server serves can be edited, in apps with adapters too.
+**HTML pages in a Vite app:** no adapter is needed for them. Text in every `.html` page the dev server serves can be edited, in apps with adapters too. A Vite site of plain pages only needs:
 
 ```ts
 import vibeVisualEditor from '@vibe-visual-editor/vite-plugin';
@@ -61,7 +61,7 @@ export default defineConfig({
 });
 ```
 
-A folder of HTML files without a build setup only needs `npm install -D vite @vibe-visual-editor/vite-plugin` and this `vite.config.ts` next to the pages. Vite serves `index.html` at `/` and every other page at its own path, for example `/about.html`. Pages in `public/` are copied as they are, so they can't be edited.
+Pages in `public/` are served as they are, so they can't be edited.
 
 Add `.vibe-visual-editor/` to the app's `.gitignore`. While the dev server runs, the plugin writes `.vibe-visual-editor/server.json` there so the extension can find the server.
 
@@ -89,10 +89,18 @@ The other tools are read-only and run without approval.
 
 Start a new agent session afterwards so it picks up the server.
 
+## Plain HTML pages
+
+A folder of `.html` files needs no dev server and no setup. Right-click a page in the Explorer and choose **Open in Vibe Visual Editor**, use the same button in the editor title bar of an open `.html` file, or ask the agent to "show me about.html". The extension serves the workspace folder on `127.0.0.1` itself, so links between pages, CSS, images and plain JavaScript work as they would on any static web server, with the folder as the site root. When you save a page, or any file in the folder changes, the preview reloads.
+
+- If the page belongs to a running Vite dev server with the plugin, it opens there instead. If it belongs to a Vite app whose dev server isn't running, Vibe Visual Editor suggests starting it, since the page probably needs Vite to build its scripts.
+- Only text written in the pages can be edited. Text built by the pages' scripts needs a Vite app with an adapter.
+- Dotfiles and dot-folders (`.env`, `.git`) and key files (`.pem`, `.crt`, `.key`) are never served, and the server answers only requests addressed to `localhost` or `127.0.0.1`.
+
 ## Using it
 
-1. Start the dev server (`npm run dev`).
-2. Open the preview: ask the agent to "show me the settings page", run **Vibe Visual Editor: Open Preview**, or open a link like `vscode://andreykats.vibe-visual-editor/open?url=http%3A%2F%2Flocalhost%3A5173%2F`.
+1. Start the dev server (`npm run dev`). Plain HTML pages don't need one.
+2. Open the preview: ask the agent to "show me the settings page", run **Vibe Visual Editor: Open Preview** (or **Open in Vibe Visual Editor** on an `.html` file), or open a link like `vscode://andreykats.vibe-visual-editor/open?url=http%3A%2F%2Flocalhost%3A5173%2F`.
 3. Pick a mode in the toolbar:
    - **Browse:** the page behaves normally.
    - **Edit text:** hovering outlines text you can edit. A solid outline means editable. A dashed outline means the text is built at runtime and can't be edited directly. Click the text, type, then press **Enter** to commit or **Esc** to cancel. **Shift+Enter** adds a line break, written to the source as `\n`. It only shows where the element's CSS keeps line breaks (`white-space: pre-line` or `pre-wrap`). Elsewhere the preview tells you it shows as a space, so you can ask the agent to change the CSS.

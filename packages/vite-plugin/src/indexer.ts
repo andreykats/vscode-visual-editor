@@ -1,7 +1,8 @@
 import { parseSync } from 'oxc-parser';
 import { cookJsxAttribute, cookJsxText, type AstNode, type LiteralEntry, type Quote, type SourceAdapter, type SourceLoc, type Span } from '@vibe-visual-editor/protocol';
-import { isNode, lineStarts, nameOf, positionAt, walk } from './ast';
-import { resolveImportBase, toRel } from './paths';
+import { lineStarts, positionAt, toRel } from '@vibe-visual-editor/server-core';
+import { isNode, nameOf, walk } from './ast';
+import { resolveImportBase } from './paths';
 
 export interface ImportBinding {
   /** Resolved target path without extension. */
@@ -14,8 +15,7 @@ export interface ImportBinding {
 export interface ModuleRecord {
   file: string;
   rel: string;
-  /** Ranks candidates for text shown by an element created in this module. */
-  rank: SourceAdapter['rank'];
+  adapter: SourceAdapter;
   literals: LiteralEntry[];
   /** Identifier name -> number of references in this module. */
   refs: Map<string, number>;
@@ -227,7 +227,7 @@ export function analyzeModule(file: string, code: string, root: string, adapter:
   }
 
   return {
-    record: { file, rel, rank: adapter.rank, literals, refs, exportsByLocal, imports },
+    record: { file, rel, adapter, literals, refs, exportsByLocal, imports },
     creationSites: facts.creationSites.map((site) => ({
       ...loc(site),
       ...(site.attributeAt !== undefined ? { attributeAt: site.attributeAt } : {}),

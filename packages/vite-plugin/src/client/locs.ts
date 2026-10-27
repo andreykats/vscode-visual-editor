@@ -1,9 +1,4 @@
-import { LOC_ATTRIBUTE, type SourceLoc } from '@vibe-visual-editor/protocol';
-
-interface FileEntry {
-  file: string;
-  rel: string;
-}
+import { LOC_ATTRIBUTE, type LocFile, type SourceLoc } from '@vibe-visual-editor/protocol';
 
 /** A table shared with the plugin's runtime module through a global symbol. */
 function shared<T extends object>(name: string, make: () => T): T {
@@ -14,7 +9,12 @@ function shared<T extends object>(name: string, make: () => T): T {
 /** Creation sites recorded by the plugin's `__le` wrapper. */
 const wrapped = () => shared('vibe-visual-editor.locs', () => new WeakMap<object, SourceLoc>());
 /** Module token -> file, registered by `__leFile` in each module that uses `data-vve-loc`. */
-const files = () => shared('vibe-visual-editor.files', () => new Map<string, FileEntry>());
+const files = () => shared('vibe-visual-editor.files', () => new Map<string, LocFile>());
+
+/** Records the files behind a page's own module tokens, passed in by the host that served it. */
+export function registerFiles(entries: Readonly<Record<string, LocFile>>): void {
+  for (const [token, entry] of Object.entries(entries)) files().set(token, entry);
+}
 
 const ATTRIBUTE_VALUE = /^([0-9a-z]+):(\d+):(\d+):(\d+):(\d+)$/;
 

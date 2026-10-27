@@ -116,3 +116,19 @@ export interface PendingEdit {
   value: string;
   original: string;
 }
+
+/** A file behind a module token in `data-vve-loc` attributes. */
+export interface LocFile {
+  /** Absolute path. */
+  file: string;
+  /** Path relative to the server root, with forward slashes. */
+  rel: string;
+}
+
+/** What a host passes to the page client's `start()` from the script it injects into a page. */
+export interface ClientConfig {
+  /** Parent-frame origins to handshake with besides VS Code webviews. Only test harnesses need them. */
+  trustedParentOrigins: string[];
+  /** Module token -> file, for the page's own `data-vve-loc` attributes. */
+  files?: Record<string, LocFile>;
+}

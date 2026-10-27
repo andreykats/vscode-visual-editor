@@ -1,7 +1,7 @@
 import type { Candidate, LiteralEntry, ResolveRequest, ResolveResponse, SourceAdapter } from '@vibe-visual-editor/protocol';
-import { analyzeHtml } from './html';
+import { HtmlIndex, isHtml, type HtmlAnalysis } from '@vibe-visual-editor/server-core';
 import { analyzeModule, type ImportBinding, type ModuleAnalysis, type ModuleRecord } from './indexer';
-import { isHtml, stripScriptExt } from './paths';
+import { stripScriptExt } from './paths';
 
 interface Importer {
   module: ModuleRecord;
@@ -18,11 +18,14 @@ export class SourceIndex {
   private readonly byValue = new Map<string, Set<LiteralEntry>>();
   /** Target module path (no extension) -> modules importing from it. */
   private readonly importers = new Map<string, Set<Importer>>();
+  private readonly pages: HtmlIndex;
 
   constructor(
     readonly root: string,
     readonly adapters: readonly SourceAdapter[],
-  ) {}
+  ) {
+    this.pages = new HtmlIndex(root);
+  }
 
   adapterFor(file: string, code: string): SourceAdapter | undefined {
     return this.adapters.find((a) => a.include(file, code));
@@ -34,20 +37,8 @@ export class SourceIndex {
     const adapter = this.adapterFor(file, code);
     if (!adapter) return null;
     const analysis = analyzeModule(file, code, this.root, adapter);
-    this.add(analysis.record);
-    return analysis;
-  }
-
-  /** Re-indexes an HTML page. */
-  updateHtml(file: string, html: string): Omit<ModuleAnalysis, 'headerAt'> {
-    this.remove(file);
-    const analysis = analyzeHtml(file, html, this.root);
-    this.add(analysis.record);
-    return analysis;
-  }
-
-  private add(record: ModuleRecord): void {
-    this.modules.set(record.file, record);
+    const { record } = analysis;
+    this.modules.set(file, record);
     for (const lit of record.literals) {
       let set = this.byValue.get(lit.value);
       if (!set) this.byValue.set(lit.value, (set = new Set()));
@@ -58,6 +49,12 @@ export class SourceIndex {
       if (!set) this.importers.set(binding.target, (set = new Set()));
       set.add({ module: record, binding });
     }
+    return analysis;
+  }
+
+  /** Re-indexes an HTML page. */
+  updateHtml(file: string, html: string): HtmlAnalysis {
+    return this.pages.update(file, html);
   }
 
   remove(file: string): void {
@@ -78,28 +75,27 @@ export class SourceIndex {
   }
 
   has(file: string): boolean {
-    return this.modules.has(file);
+    return this.modules.has(file) || this.pages.has(file);
   }
 
   /** Literals of `code` analyzed as `file`, without touching the index. */
   analyzeDetached(file: string, code: string): LiteralEntry[] {
-    if (isHtml(file)) return analyzeHtml(file, code, this.root).record.literals;
+    if (isHtml(file)) return this.pages.analyze(file, code);
     const adapter = this.adapterFor(file, code);
     if (!adapter) return [];
     return analyzeModule(file, code, this.root, adapter).record.literals;
   }
 
   resolve(req: ResolveRequest): ResolveResponse {
-    const { elementLoc } = req;
-    // Text in an HTML page shows only inside the element written around it, never elsewhere.
-    const matches = [...(this.byValue.get(req.text) ?? [])].filter(
-      (lit) => lit.quote !== 'html' || (lit.file === elementLoc?.file && lit.owner === elementLoc.start),
-    );
-    if (matches.length === 0 || req.text.trim() === '') return { editable: false, candidates: [] };
-    const candidates = matches.map((lit) => this.toCandidate(lit));
-    const ownerModule = elementLoc ? this.modules.get(elementLoc.file) : undefined;
-    const rank = ownerModule?.rank ?? this.modules.get(candidates[0]!.file)!.rank;
-    const ranked = rank(candidates, { elementLoc });
+    // Text written in a page is the source of the element around it, whatever scripts hold the same string.
+    const page = this.pages.resolve(req);
+    if (page.editable) return page;
+    const matches = this.byValue.get(req.text);
+    if (!matches || matches.size === 0 || req.text.trim() === '') return { editable: false, candidates: [] };
+    const candidates = [...matches].map((lit) => this.toCandidate(lit));
+    const ownerModule = req.elementLoc ? this.modules.get(req.elementLoc.file) : undefined;
+    const adapter = ownerModule?.adapter ?? this.modules.get(candidates[0]!.file)!.adapter;
+    const ranked = adapter.rank(candidates, { elementLoc: req.elementLoc });
     const best = Math.min(...ranked.map((r) => r.rank));
     return { editable: true, candidates: ranked.filter((r) => r.rank === best).map((r) => r.candidate) };
   }

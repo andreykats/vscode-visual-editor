@@ -5,6 +5,7 @@
   "type": "module",
   "workspaces": [
     "packages/protocol",
+    "packages/server-core",
     "packages/vite-plugin",
     "packages/mcp-bridge",
     "packages/extension",

@@ -29,6 +29,17 @@ await Promise.all([
     target: 'es2022',
     minify: true,
   }),
+  // The page client the static server injects into plain HTML pages; the Vite plugin builds the same entry.
+  build({
+    entryPoints: [`${pkg}/../vite-plugin/src/client/index.ts`],
+    outfile: `${pkg}/dist/page-client.js`,
+    bundle: true,
+    platform: 'browser',
+    format: 'esm',
+    target: 'es2022',
+    minify: true,
+    legalComments: 'none',
+  }),
   // The stdio MCP server agents launch. Self-contained: copied to ~/.vibe-visual-editor/bin on activation.
   build({
     entryPoints: [`${bridge}/src/main.ts`],

@@ -12,7 +12,7 @@ import { pickWindow, readWindows, registryDir, type Route } from './registry';
 export const VERSION = '0.1.0';
 
 export const INSTRUCTIONS = `Vibe Visual Editor: renders the user's running web app in a VS Code tab and shares the element they selected.
-When the user asks to see, show, render, open or preview a page or screen, call open_preview (pass path like "#/settings" for hash routes).
+When the user asks to see, show, render, open or preview a page or screen, call open_preview (pass path like "#/settings" for hash routes, or "about.html" for a plain HTML page).
 When they refer to "the selected element", "this", "that button", "what I clicked", or "here", call get_selection first, then edit the source at its creationSite (file:line).
 Text the user retypes in the preview is saved by them; do not redo those edits.`;
 
@@ -86,10 +86,10 @@ export function createVibeVisualEditorServer(deps: Deps = { cwd: process.cwd(), 
     {
       title: 'Open preview',
       description:
-        "Open, show, render or preview a page of the user's running web app in a VS Code tab (Vibe Visual Editor). Use when the user asks to see a page or screen. `path` is app-relative: '#/settings' for a hash route, or 'admin/'. Without `url`, uses the dev server discovered in the workspace.",
+        "Open, show, render or preview a page of the user's running web app in a VS Code tab (Vibe Visual Editor). Use when the user asks to see a page or screen. `path` is app-relative: '#/settings' for a hash route, 'admin/', or 'about.html'. Without `url`, uses the dev server discovered in the workspace; a workspace of plain HTML pages without one is served by the extension itself.",
       inputSchema: z.object({
         url: z.string().max(4096).optional().describe('Full dev server URL on localhost. Usually omit it.'),
-        path: z.string().max(2048).optional().describe("App-relative path or hash route, e.g. '#/settings'."),
+        path: z.string().max(2048).optional().describe("App-relative path or hash route, e.g. '#/settings' or 'about.html'."),
         mode: z.enum(['browse', 'edit', 'select']).optional().describe("'select' lets the user pick an element to talk about; 'edit' lets them retype text."),
       }),
     },
@@ -119,7 +119,7 @@ export function createVibeVisualEditorServer(deps: Deps = { cwd: process.cwd(), 
     'get_preview_state',
     {
       title: 'Get preview state',
-      description: 'Vibe Visual Editor preview status: open previews and their URLs, current mode, unsaved text edits, and running dev servers.',
+      description: 'Vibe Visual Editor preview status: open previews and their URLs, current mode, unsaved text edits, and running dev servers (including folders of HTML pages the extension serves).',
       annotations: { readOnlyHint: true },
     },
     guarded(async () => {

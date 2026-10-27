@@ -1,4 +1,3 @@
-import config from 'virtual:vibe-visual-editor/config';
 import {
   EnvelopeSchema,
   HostMessageSchema,
@@ -11,9 +10,6 @@ import {
 /** Origins a VS Code webview can have: desktop, and VS Code for the Web. */
 const WEBVIEW_ORIGIN = [/^vscode-webview:\/\/[\w-]+$/, /^https:\/\/[\w-]+\.vscode-cdn\.net$/];
 
-function isTrustedParent(origin: string): boolean {
-  return WEBVIEW_ORIGIN.some((re) => re.test(origin)) || config.trustedParentOrigins.includes(origin);
-}
 
 /**
  * postMessage link to the Vibe Visual Editor webview. Only `le:hello` goes out before
@@ -24,7 +20,8 @@ export class Channel {
   private parentOrigin: string | null = null;
   private readonly handlers = new Set<(msg: HostMessage) => void>();
 
-  constructor() {
+  /** `trustedParentOrigins`: origins to trust besides VS Code webviews, for test harnesses. */
+  constructor(private readonly trustedParentOrigins: readonly string[]) {
     window.addEventListener('message', (event) => {
       if (event.source !== window.parent) return;
       const parsed = HostMessageSchema.safeParse(event.data);
@@ -37,7 +34,7 @@ export class Channel {
       }
       const msg = parsed.data;
       if (msg.type === 'le:ack') {
-        if (!isTrustedParent(event.origin)) {
+        if (!this.isTrustedParent(event.origin)) {
           console.warn(`[vibe-visual-editor] ignoring handshake from untrusted origin ${event.origin}`);
           return;
         }
@@ -47,6 +44,10 @@ export class Channel {
       }
       for (const h of this.handlers) h(msg);
     });
+  }
+
+  private isTrustedParent(origin: string): boolean {
+    return WEBVIEW_ORIGIN.some((re) => re.test(origin)) || this.trustedParentOrigins.includes(origin);
   }
 
   get connected(): boolean {

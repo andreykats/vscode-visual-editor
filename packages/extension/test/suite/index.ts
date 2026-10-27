@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import * as vscode from 'vscode';
 import { PROTOCOL_VERSION, type Candidate, type ResolveResponse, type WindowEntry } from '@vibe-visual-editor/protocol';
@@ -339,6 +339,52 @@ test('bridge: token required; selection and state served; open validated', async
   assert.equal(bad.status, 400);
   const ok = (await (await fetch(`${base}/open`, { method: 'POST', headers: auth, body: '{"path":"#/"}' })).json()) as { ok: boolean };
   assert.equal(ok.ok, true);
+});
+
+test('an HTML file inside the running dev server opens on its URL', async () => {
+  const rel = 'page.html';
+  writeFileSync(file(rel), '<!doctype html>\n<title>Page</title>\n<h1>Page</h1>\n');
+  try {
+    const opened = await api.openFile(vscode.Uri.file(file(rel)));
+    assert.equal(opened, panel, 'same origin, same panel');
+    assert.equal(panel.url, `${DEV_URL}page.html`);
+  } finally {
+    rmSync(file(rel), { force: true });
+  }
+});
+
+test('a plain HTML page is served by the extension: edit, save, and the preview reloads', async () => {
+  const rel = 'site/index.html';
+  const source = '<!doctype html>\n<html>\n<head><title>Site</title></head>\n<body>\n  <h1>Static page</h1>\n</body>\n</html>\n';
+  mkdirSync(file('site'), { recursive: true });
+  writeFileSync(file(rel), source);
+  const server = await api.staticPages.serverFor(vscode.workspace.workspaceFolders![0]!);
+  const page = await api.previews.open(new URL('site/', server.url).href);
+  try {
+    assert.notEqual(page, panel);
+    await until('static page connects', () => page.status === 'connected', 30_000);
+
+    const served = await (await fetch(new URL('site/', server.url))).text();
+    const [start, end, line, column] = /<h1 data-vve-loc="0:(\d+):(\d+):(\d+):(\d+)"/.exec(served)!.slice(1).map(Number);
+    const res = await fetch(new URL('/__vibe-visual-editor/resolve', server.url), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Static page', elementLoc: { file: file(rel), rel, start, end, line, column } }),
+    });
+    const [c] = ((await res.json()) as ResolveResponse).candidates;
+    assert.equal(c?.raw, 'Static page');
+
+    const before = page.helloCount;
+    await page.edits.edit(c!, 'Edited & saved');
+    await page.save();
+    assert.equal(disk(rel), source.replace('Static page', 'Edited & saved'));
+    await until('reload after save', () => page.helloCount > before, 20_000);
+    assert.ok((await (await fetch(new URL('site/', server.url))).text()).includes('Edited & saved'));
+  } finally {
+    page.panel.dispose();
+    await revert(rel);
+    rmSync(file('site'), { recursive: true, force: true });
+  }
 });
 
 export async function run(): Promise<void> {

@@ -37,7 +37,7 @@ export default defineConfig({
 });
 ```
 
-**Plain HTML pages** need no adapter:
+**Plain HTML pages** need no adapter (and a folder of them doesn't need Vite at all: the extension can serve it itself):
 
 ```ts
 import vibeVisualEditor from '@vibe-visual-editor/vite-plugin';

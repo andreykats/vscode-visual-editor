@@ -8,5 +8,6 @@
 !media/webview.css
 !dist/extension.cjs
 !dist/webview.js
+!dist/page-client.js
 !dist/mcp-bridge.mjs
 !dist/setup.md

@@ -19,6 +19,7 @@ Setup and usage are in [docs/setup.md](docs/setup.md). The original design brief
 ```
 packages/
   protocol/      shared types, zod/mini schemas, literal escaping, URL checks
+  server-core/   HTML page index, the /__vibe-visual-editor/* API, static server for plain HTML pages
   vite-plugin/   @vibe-visual-editor/vite-plugin: literal index, h() and React adapters, injected page client
   extension/     VS Code extension: preview webview, edit service, URI handler, bridge server
   mcp-bridge/    stdio MCP server (bundled into the extension as dist/mcp-bridge.mjs)
@@ -33,7 +34,7 @@ docs/            setup, adapter guide, spike results
 
 - **Vite plugin** (dev only). Indexes every string literal as modules are transformed, and the text of each HTML page as it is served, and tags where each element was created: `h(...)` calls are wrapped as `__le(h(...), loc)`, while lowercase JSX elements and the elements of HTML pages get a `data-vve-loc` attribute. Serves `/__vibe-visual-editor/resolve`, `/analyze` and `/health`. Injects the page client and writes `.vibe-visual-editor/server.json`.
 - **Page client** (inside the iframe). Does all the DOM work: hover outlines, the inline plain-text editor, selection and element descriptors, keyboard forwarding, and re-applying unsaved edits after the app re-renders. Talks to the webview with `postMessage`, pinned to the webview's origin after a handshake.
-- **Extension.** Owns all file writes. Edits are `WorkspaceEdit`s on `TextDocument`s, so files get the dirty marker and normal undo, and nothing reaches disk until Save. Each window runs a loopback bridge (random port plus token) and registers it in `~/.vibe-visual-editor/windows/<pid>.json`.
+- **Extension.** Owns all file writes. For plain HTML pages it needs no dev server: it serves the workspace folder itself on loopback with `server-core`'s static server, which injects the same page client and answers the same API, and reloads the preview when files in the folder change. Edits are `WorkspaceEdit`s on `TextDocument`s, so files get the dirty marker and normal undo, and nothing reaches disk until Save. Each window runs a loopback bridge (random port plus token) and registers it in `~/.vibe-visual-editor/windows/<pid>.json`.
 - **MCP bridge.** Each agent starts its own stdio process. It routes to the VS Code window whose workspace contains its `cwd`, and exposes `open_preview`, `get_selection` and `get_preview_state`, plus a `preview://selection` resource and a `selected` prompt.
 
 ## Develop
