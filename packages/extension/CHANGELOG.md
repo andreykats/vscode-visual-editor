@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 (preview)
+
+- **Plain HTML pages, with no setup.** Right-click an `.html` file (or use the button in its editor title bar) and choose **Open in Vibe Visual Editor**. The extension serves the workspace folder itself on `127.0.0.1`, so pages, links, CSS and images work without a dev server, and the preview reloads when files change. Agents' `open_preview` falls back to these pages when no dev server is running.
+- **Edit text in HTML pages**, served by the extension or by Vite. Text is written back as HTML (`&lt;`, `&amp;` where needed), and the line breaks and indentation around multi-line text are left as they are. Selected elements point at their line in the page.
+- The Vite plugin no longer needs an adapter: `vibeVisualEditor()` makes HTML pages editable on its own.
+- Protocol version 3: use `@vibe-visual-editor/vite-plugin` 0.3 or later. An older plugin shows "plugin version mismatch".
+
 ## 0.2.0 (preview)
 
 - **React support.** With the plugin's new `reactAdapter()`, you can edit text between JSX tags and string props that components render (`<Card title="Settings" />`), and selected elements point at their JSX line. Edits are written back in JSX syntax.

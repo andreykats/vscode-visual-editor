@@ -1,8 +1,8 @@
 {
   "name": "vibe-visual-editor",
   "displayName": "Vibe Visual Editor",
-  "description": "Preview your running Vite app in VS Code, edit its text in place, and share selected elements with Claude Code and Codex. Supports React (JSX) and h()-based apps.",
-  "version": "0.2.0",
+  "description": "Preview your running Vite app or plain HTML pages in VS Code, edit their text in place, and share selected elements with Claude Code and Codex. Supports React (JSX), h()-based apps and static HTML.",
+  "version": "0.3.0",
   "private": true,
   "publisher": "andreykats",
   "license": "MIT",
@@ -35,6 +35,7 @@
     "react",
     "jsx",
     "vite",
+    "html",
     "preview",
     "visual editor",
     "live edit",

@@ -1,12 +1,13 @@
 {
   "name": "@vibe-visual-editor/vite-plugin",
-  "version": "0.2.1",
-  "description": "Dev-only Vite plugin for Vibe Visual Editor, with React (JSX) support: maps rendered text back to the literals in your source, so the VS Code preview can edit it in place.",
+  "version": "0.3.0",
+  "description": "Dev-only Vite plugin for Vibe Visual Editor, with React (JSX) and plain HTML support: maps rendered text back to the literals and page text in your source, so the VS Code preview can edit it in place.",
   "keywords": [
     "vite",
     "vite-plugin",
     "react",
     "jsx",
+    "html",
     "visual editor",
     "live edit",
     "vscode",

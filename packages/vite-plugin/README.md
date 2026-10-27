@@ -61,7 +61,7 @@ An adapter tells the plugin how your app's scripts create elements. Text in the 
 ## Requirements
 
 - Vite 7 or later.
-- The Vibe Visual Editor extension 0.2 or later. Plugin 0.2 and extension 0.2 speak protocol version 2.
+- The Vibe Visual Editor extension 0.3 or later. Plugin 0.3 and extension 0.3 speak protocol version 3.
 - Node.js 20.19+ or 22.12+, as Vite requires.
 
 ## License
