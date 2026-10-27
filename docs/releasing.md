@@ -45,7 +45,7 @@ Trusted publishing is configured on each registry and names this repository and 
 | Field | Value |
 |---|---|
 | Owner | `andreykats` |
-| Repository | `vibe-visual-editor` |
+| Repository | `vscode-visual-editor` |
 | Workflow | `release.yml` |
 | Environment | (none) |
 
